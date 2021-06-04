@@ -6,13 +6,17 @@ import psycopg2
 import cerberus
 from flask import Flask, request
 
-from GatheringInfo import statistics
+#from GatheringInfo import statistics
 # Valores globais e constantes
 
 app = Flask(__name__)
 
-ApiFunctions = {"MapTrajectory":statistics.MapTrajectory}
+#ApiFunctions = {"MapTrajectory":statistics.MapTrajectory}
 
+
+@app.route("/")
+def index():
+    return "Hello there"
 
 @app.route("/api/v1/<requestType>",methods=['GET'])
 def DoRequest(requestType):
@@ -30,19 +34,20 @@ def DoRequest(requestType):
         return {"message":"json string is not valid"}, 400
 
     # Conectar-se ao BD
-    database = psycopg2.connect(**CONFIGS['database'])
+#    database = psycopg2.connect(**CONFIGS['database'])
 
-    if not requestType in ApiFunctions.keys():
-        return "DEU MERDA",400
+#    if not requestType in ApiFunctions.keys():
+        return "Error: Request not valid",400
 
     
     #Selecionar entre diferentes requisicoes
-    text, graph = ApiFunctions[requestType](userOptions)
+#    text, graph = ApiFunctions[requestType](userOptions)
 
-    print(f"Content-Type: application/json\r\n\r\n{json.dumps(userRequest)}")
+#    print(f"Content-Type: application/json\r\n\r\n{json.dumps(userRequest)}")
 
 
-
+if __name__ == "__main__":
+    app.run()
 
 
 # EXCEPTIONS DECLARATION
