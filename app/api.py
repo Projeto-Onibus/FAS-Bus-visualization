@@ -6,25 +6,27 @@ import psycopg2
 import cerberus
 from flask import Flask, request
 
-#from GatheringInfo import statistics
+import statistics
 # Valores globais e constantes
 
 app = Flask(__name__)
+CONFIGS = ConfigParser()
+CONFIGS.read("DatabaseConfigs.ini")
+database = psycopg2.connect(**CONFIGS['database'])
 
-#ApiFunctions = {"MapTrajectory":statistics.MapTrajectory}
 
+ApiFunctions = {"MapTrajectory":statistics.MapTrajectory,
+                "BusAmount":statistics.BusAmount,
+                "LinePerformanceDay":statistics.linePerformanceDay
+                }
 
-@app.route("/")
-def index():
-    return "Hello there"
-
-@app.route("/api/v1/<requestType>",methods=['GET'])
+@app.route("/v1/<requestType>",methods=['GET'])
 def DoRequest(requestType):
     
     if not request.is_json:
         return {"message":'"Content-Type" MUST be set to "application/json"'}, 400
     
-    request.on_json_loading_failed(lambda: {} )
+    request.on_json_loading_failed(InvalidJsonDecodingError)
     userInput = request.json
 
     # Adquirindo configs do script
@@ -33,17 +35,15 @@ def DoRequest(requestType):
     except json.decoder.JSONDecodeError:
         return {"message":"json string is not valid"}, 400
 
-    # Conectar-se ao BD
-#    database = psycopg2.connect(**CONFIGS['database'])
-
-#    if not requestType in ApiFunctions.keys():
+    if not requestType in ApiFunctions.keys():
         return "Error: Request not valid",400
 
     
     #Selecionar entre diferentes requisicoes
-#    text, graph = ApiFunctions[requestType](userOptions)
-
-#    print(f"Content-Type: application/json\r\n\r\n{json.dumps(userRequest)}")
+    text, graph = ApiFunctions[requestType](userOptions, database, CONFIGS)
+    
+    print("Content-Type: application/json\r\n\r\n")
+    return graph
 
 
 if __name__ == "__main__":
