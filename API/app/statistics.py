@@ -89,13 +89,13 @@ def BusAmount(userOptions,databaseOpts):
     database = psycopg2.connect(**databaseOpts)
     # Validade options 
 
-    missingProperties = {"inicio","fim"}.difference(set(userOptions.keys()))
+    missingProperties = {"start_date","end_date"}.difference(set(userOptions.keys()))
     if len(missingProperties)>0:
         raise MissingRequiredProperties(missingProperties)
     
     
-    startDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['inicio']),datetime.time(0,0,0))
-    endDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['fim']),datetime.time(0,0,0))
+    startDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['start_date']),datetime.time(0,0,0))
+    endDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['end_date']),datetime.time(0,0,0))
     endDate += datetime.timedelta(days=1)
     with database.cursor() as cursor:
         cursor.execute("""SELECT 
