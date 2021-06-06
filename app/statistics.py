@@ -1,6 +1,7 @@
 import numpy as np
 import datetime
 import json
+import psycopg2
 
 from bokeh.models import ColumnDataSource,Range1d
 from bokeh.models.annotations import Title, Legend, LegendItem
@@ -9,6 +10,13 @@ from bokeh.embed import json_item
 from bokeh.tile_providers import OSM, get_provider
 from bokeh.palettes import Category20_20, Inferno256
 from bokeh.transform import linear_cmap, factor_cmap
+
+from redis import StrictRedis
+from redis_cache import RedisCache
+
+client = StrictRedis(host="cache", decode_responses=True)
+cache = RedisCache(redis_client=client)
+
 class Colours:
     colourMap = Category20_20
     def __init__(self):
@@ -75,7 +83,17 @@ def BasicFormatting(figure,title="Gráfico",x_label=None,y_label=None,grid=True,
         figure.add_tile(get_provider(OSM))
 
 
-def BusAmount(userOptions,database,CONFIGS):
+@cache.cache()
+def BusAmount(userOptions,databaseOpts):
+    # Create database connection
+    database = psycopg2.connect(**databaseOpts)
+    # Validade options 
+
+    missingProperties = {"inicio","fim"}.difference(set(userOptions.keys()))
+    if len(missingProperties)>0:
+        raise MissingRequiredProperties(missingProperties)
+    
+    
     startDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['inicio']),datetime.time(0,0,0))
     endDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['fim']),datetime.time(0,0,0))
     endDate += datetime.timedelta(days=1)
@@ -124,19 +142,27 @@ def BusAmount(userOptions,database,CONFIGS):
     
     BasicFormatting(fig,"Quantitade de ônibus no sistema",x_label="Dia",y_label="Quantidade")
 
-    return "",json_item(fig)
-    
+    data['time'] = [i.isoformat() for i in data['x']]
+    data.pop("x")
 
-def linePerformanceDay(userOptions,database,CONFIGS):
+    if 'graph' in userOptions.keys() and userOptions['graph']:
+        return data,json_item(fig)
+    return data,""
+
+@cache.cache()
+def linePerformanceDay(userOptions,database):
     #
     #  Preparing
     # 
 
-    desiredDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['dia']),datetime.time(0,0,0))
+    database = psycopg2.connect(**database)
+
+    desiredDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['date']),datetime.time(0,0,0))
     nextDate = desiredDate + datetime.timedelta(days=1)
-    selectedLines = [i for i in userOptions['linha'].split(",") if len(i) > 0] 
-    detectedLine = True if str(userOptions['detectada']) == "True" else False
-    lineQuota = int(userOptions['cota'])
+    selectedLines = [i for i in userOptions['line'].split(",") if len(i) > 0] 
+    detectedLine = userOptions['detected']
+    lineQuota = int(userOptions['cota']) if 'cota' in userOptions.keys() else 0
+    
     #
     # Database acquisition
     #
@@ -156,7 +182,7 @@ def linePerformanceDay(userOptions,database,CONFIGS):
                 FROM bus_data 
                 WHERE 
                     time_detection BETWEEN %s AND %s AND 
-                    {"line_key_detected" if detectedLine else "line_key_reported"}=%s 
+                    {"line_detected" if detectedLine else "line_reported"}=%s 
                 GROUP BY tempo""",(desiredDate,nextDate,line))
                 queryResults = cursor.fetchall()            
                 graphData += [{
@@ -173,12 +199,15 @@ def linePerformanceDay(userOptions,database,CONFIGS):
     colour = Colours()
     a = colour.new
     
+    data = dict()
     for lineData in graphData: 
         fig.line(
             line_color=colour.new,
             x=lineData['x'],y=lineData['y'],
             legend_label=lineData['label'],
             line_width=3)
+        data['time'] = [i.isoformat() for i in lineData['x']]
+        data[lineData['label']] = lineData['y']
 
     # Add quota user-defined   
     fig.line(
@@ -189,9 +218,12 @@ def linePerformanceDay(userOptions,database,CONFIGS):
         line_width=4
     )
 
+
     BasicFormatting(fig,title=f"Quantidade de ônibus na linha {selectedLines[0]}",y_label="Quantidade",x_label="Tempo (h)")
     
-    return "",json_item(fig)
+    if 'graph' in userOptions.keys() and userOptions['graph']:
+        return data,json_item(fig)
+    return data,""
 # ---------------------------------------------------------------------------------------------------------------------------------------------------
 # 
 #  
@@ -201,7 +233,7 @@ def linePerformanceDay(userOptions,database,CONFIGS):
 # 
 # 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-
+@cache.cache()
 def MapTrajectory(userOptions,database,CONFIGS):
     
     # ---------------------------------------------
@@ -405,3 +437,8 @@ if __name__ == "__main__":
 class InvalidUserInput(Exception):
     def __init__(self,message):
         self.message = message
+
+
+class MissingRequiredProperties(Exception):
+    def __init__(self,property=""):
+        self.message = f"the following required properties were not given: {property}"

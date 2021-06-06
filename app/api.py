@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import json
 from configparser import ConfigParser
+from pathlib import Path
+import datetime
 
 import psycopg2
 import cerberus
@@ -10,11 +12,17 @@ import statistics
 # Valores globais e constantes
 
 app = Flask(__name__)
+
+# Importing configurations
+configPath = Path("/app/") / "main.conf"
 CONFIGS = ConfigParser()
-CONFIGS.read("DatabaseConfigs.ini")
-database = psycopg2.connect(**CONFIGS['database'])
+CONFIGS.read(configPath)
+
+attemptConnect = datetime.datetime.now()
+maxTimeAttempt = datetime.timedelta(minutes=1)
 
 
+print("Connected to database")
 ApiFunctions = {"MapTrajectory":statistics.MapTrajectory,
                 "BusAmount":statistics.BusAmount,
                 "LinePerformanceDay":statistics.linePerformanceDay
@@ -26,24 +34,26 @@ def DoRequest(requestType):
     if not request.is_json:
         return {"message":'"Content-Type" MUST be set to "application/json"'}, 400
     
-    request.on_json_loading_failed(InvalidJsonDecodingError)
-    userInput = request.json
-
+    print(f"sent data:{request.get_json()}")
     # Adquirindo configs do script
     try:
-        userOptions = json.loads(userInput)
-    except json.decoder.JSONDecodeError:
-        return {"message":"json string is not valid"}, 400
+        userOptions = json.loads(request.get_json())
+    except Exception as err:
+        return {"message":"json string is not valid","details":err.__str__()}, 400
 
     if not requestType in ApiFunctions.keys():
-        return "Error: Request not valid",400
+        return {"Error":"Request not valid"},400
 
-    
+    print(f"useroptions ({type(userOptions)}): {userOptions}")
     #Selecionar entre diferentes requisicoes
-    text, graph = ApiFunctions[requestType](userOptions, database, CONFIGS)
-    
-    print("Content-Type: application/json\r\n\r\n")
-    return graph
+    try:
+        text, graph = ApiFunctions[requestType](userOptions, dict(CONFIGS['database']))
+    except Exception as err:
+        return {"message":"could not process this request. Contact administration",
+                "details":{"name":err.__str__()}}, 400
+
+    results = {"text":text,"graph":graph}
+    return results
 
 
 if __name__ == "__main__":

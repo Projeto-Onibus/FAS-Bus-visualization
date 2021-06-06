@@ -1,0 +1,10 @@
+{
+    "type":"object",
+    "properties":{
+        "date":{"type":"string","regex":"^\\d\\d\\d\\d-\\d\\d-\\d\\d$"},
+        "lines":{"type":"string"},
+        "detected":{"type":"boolean"},
+        "quota":{"type":"number"}
+    },
+    "required":["date","lines","detected"]
+}

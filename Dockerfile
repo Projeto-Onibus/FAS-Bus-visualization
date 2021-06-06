@@ -1,6 +1,6 @@
 FROM python:3.7 AS development
 
-RUN python3 -m pip install psycopg2 numpy bokeh flask uwsgi
+RUN python3 -m pip install psycopg2 numpy bokeh flask uwsgi redis python-redis-cache
 
 RUN python3 -m pip install cerberus
 

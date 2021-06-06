@@ -1,0 +1,8 @@
+{
+    "type":"object",
+    "properties": {
+        "start_date":{"type":"string","regex":"^\\d\\d\\d\\d-\\d\\d-\\d\\d$"},
+        "end_date":{"type":"string","regex":"^\\d\\d\\d\\d-\\d\\d-\\d\\d$"}
+    },
+    "required":["start_date","end_date"]
+}

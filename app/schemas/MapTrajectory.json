@@ -1,0 +1,13 @@
+{
+    "type":"object",
+    "properties":{
+        "dia":{"type":"string","regex":"^\\d\\d\\d\\d-\\d\\d-\\d\\d$"},
+        "linha":{"type":"string","regex": "^(\\w{1,8},)*(\\w{1,8})$"},
+        "onibus":{"type":"string","regex": "^(\\w{1,8},)*(\\w{1,8})$"},
+        "gradienteOnibus":{"type":"string","enum":["tempo","linhaDetectada","linhaReportada","none"]},
+        "direcaoLinha":{"type":"string","enum":["0","1","ambas","nenhum"]}
+    }
+    
+}
+
+
