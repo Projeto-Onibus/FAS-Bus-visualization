@@ -14,7 +14,7 @@ import statistics
 app = Flask(__name__)
 
 # Importing configurations
-configPath = Path("/app/") / "main.conf"
+configPath = Path("/run/secrets") / "main_configurations"
 CONFIGS = ConfigParser()
 CONFIGS.read(configPath)
 
