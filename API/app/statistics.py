@@ -82,21 +82,16 @@ def BasicFormatting(figure,title="Gráfico",x_label=None,y_label=None,grid=True,
     if mapTile:
         figure.add_tile(get_provider(OSM))
 
-
 @cache.cache()
-def BusAmount(userOptions,databaseOpts):
+def GetBusDataDay(desiredDay,databaseOpts):
     # Create database connection
     database = psycopg2.connect(**databaseOpts)
-    # Validade options 
+    
+    # Defining query day range
+    startDate = datetime.datetime.fromisoformat(desiredDay)
+    endDate = startDate + datetime.timedelta(days=1)
 
-    missingProperties = {"start_date","end_date"}.difference(set(userOptions.keys()))
-    if len(missingProperties)>0:
-        raise MissingRequiredProperties(missingProperties)
-    
-    
-    startDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['start_date']),datetime.time(0,0,0))
-    endDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['end_date']),datetime.time(0,0,0))
-    endDate += datetime.timedelta(days=1)
+    # Total bus amount query
     with database.cursor() as cursor:
         cursor.execute("""SELECT 
                             DATE(time_detection) as dia, COUNT(DISTINCT(bus_id)) 
@@ -104,29 +99,57 @@ def BusAmount(userOptions,databaseOpts):
                         WHERE time_detection BETWEEN %s AND %s
                         GROUP BY dia ORDER BY dia;
                 """, (startDate,endDate))
-        totalResults = cursor.fetchall()
+        total = cursor.fetchall()
+        total = total[0][1] if len(total) > 0 else None
+            
     
+    # Peak amount query
+    with database.cursor() as cursor:
+        cursor.execute(f""" SELECT DATE(tempo) as dia, MAX(quantidade) FROM 
+                        (SELECT 
+                            (TIMESTAMP WITHOUT TIME ZONE 'epoch' + INTERVAL '1 second' * floor(extract('epoch' from time_detection)/600)*600) as tempo,
+                            COUNT(DISTINCT(bus_id)) AS quantidade
+                        FROM bus_data 
+                        WHERE 
+                            time_detection BETWEEN %s AND %s 
+                        GROUP BY tempo) as tab
+                        GROUP BY dia ORDER BY dia
+                    """,(startDate,endDate)
+        )
+        peak = cursor.fetchall()
+        peak = peak[0][1] if len(peak) > 0 else None
+
+    return startDate.isoformat(),total,peak
+
+
+def BusAmount(userOptions,databaseOpts):
+
+    # Validade options 
+    missingProperties = {"start_date","end_date"}.difference(set(userOptions.keys()))
+    if len(missingProperties)>0:
+        raise MissingRequiredProperties(missingProperties)
+        
+    startDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['start_date']),datetime.time(0,0,0))
+    endDate = datetime.datetime.combine(datetime.date.fromisoformat(userOptions['end_date']),datetime.time(0,0,0))
+
     data = {
-       'x': [datetime.datetime.combine(i[0],datetime.time(0)) for i in totalResults],
-       'total':[i[1] for i in totalResults]
+       'x': [],
+       'total':[],
+       'difference':[]
     }
 
-    with database.cursor() as cursor:
-       cursor.execute(f""" SELECT DATE(tempo) as dia, MAX(quantidade) FROM 
-                           (SELECT 
-                               (TIMESTAMP WITHOUT TIME ZONE 'epoch' + INTERVAL '1 second' * floor(extract('epoch' from time_detection)/600)*600) as tempo,
-                               COUNT(DISTINCT(bus_id)) AS quantidade
-                           FROM bus_data 
-                           WHERE 
-                               time_detection BETWEEN %s AND %s 
-                           GROUP BY tempo) as tab
-                           GROUP BY dia ORDER BY dia
-                       """,(startDate,endDate)
-       )
-       peakResults = cursor.fetchall()
-    
-    data['difference'] = [data['total'][i] - peakResults[i][1] for i in range(len(peakResults))]
-    
+    while (startDate <= endDate):
+        currentDate, total, peak = GetBusDataDay(endDate.isoformat(),databaseOpts)
+        # Makes sure data is not present in database either
+        if not total:
+            GetBusDataDay.invalidate(endDate.isoformat(),databaseOpts)
+            currentDate, total, peak = GetBusDataDay(endDate.isoformat(),databaseOpts)
+        if total:
+            data['x'] += [datetime.datetime.fromisoformat(currentDate)]
+            data['total'] += [total]
+            data['difference'] += [total - peak]
+        endDate -= datetime.timedelta(days=1)
+
     if len(data['total']) == 0:
         raise RequestNotPresentInDatabase
 
@@ -236,7 +259,6 @@ def linePerformanceDay(userOptions,database):
 # 
 # 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-@cache.cache()
 def MapTrajectory(userOptions,database,CONFIGS):
     
     # ---------------------------------------------
@@ -446,7 +468,6 @@ class MissingRequiredProperties(Exception):
     def __init__(self,property=""):
         self.message = f"the following required properties were not given: {property}"
 
-class MissingRequiredProperties(Exception):
+class RequestNotPresentInDatabase(Exception):
     def __init__(self,property=""):
-        self.message = f""
-
+        self.message = f"The required data is not present in database"

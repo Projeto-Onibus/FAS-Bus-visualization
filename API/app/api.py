@@ -46,11 +46,13 @@ def DoRequest(requestType):
 
     print(f"useroptions ({type(userOptions)}): {userOptions}")
     #Selecionar entre diferentes requisicoes
-    try:
-        text, graph = ApiFunctions[requestType](userOptions, dict(CONFIGS['database']))
-    except Exception as err:
-        return {"message":"could not process this request. Contact administration",
-                "details":{"name":err.__str__()}}, 400
+    #try:
+    text, graph = ApiFunctions[requestType](userOptions, dict(CONFIGS['database']))
+
+    # TODO: User based error class to return info with code 400
+    #except Exception as err:
+     #   raise err
+        #return {"message":"could not process this request. Contact administration"}, 500
 
     results = {"text":text,"graph":graph}
     return results
