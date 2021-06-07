@@ -126,6 +126,9 @@ def BusAmount(userOptions,databaseOpts):
        peakResults = cursor.fetchall()
     
     data['difference'] = [data['total'][i] - peakResults[i][1] for i in range(len(peakResults))]
+    
+    if len(data['total']) == 0:
+        raise RequestNotPresentInDatabase
 
     source = ColumnDataSource(data)
 
@@ -442,3 +445,8 @@ class InvalidUserInput(Exception):
 class MissingRequiredProperties(Exception):
     def __init__(self,property=""):
         self.message = f"the following required properties were not given: {property}"
+
+class MissingRequiredProperties(Exception):
+    def __init__(self,property=""):
+        self.message = f""
+
