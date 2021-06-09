@@ -28,7 +28,7 @@ ApiFunctions = {"MapTrajectory":statistics.MapTrajectory,
                 "LinePerformanceDay":statistics.linePerformanceDay
                 }
 
-@app.route("/api/v1/<requestType>",methods=['GET'])
+@app.route("/api/v1/<requestType>",methods=['GET','POST'])
 def DoRequest(requestType):
     
     if not request.is_json:
