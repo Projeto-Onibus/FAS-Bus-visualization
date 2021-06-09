@@ -31,6 +31,9 @@ ApiFunctions = {"MapTrajectory":statistics.MapTrajectory,
 @app.route("/api/v1/<requestType>",methods=['GET','POST'])
 def DoRequest(requestType):
     
+    if requestType == "Status":
+        return 200 # OK
+
     if not request.is_json:
         return {"message":'"Content-Type" MUST be set to "application/json"'}, 400
     
