@@ -32,7 +32,7 @@ ApiFunctions = {"MapTrajectory":statistics.MapTrajectory,
 def DoRequest(requestType):
     
     if requestType == "Status":
-        return 200 # OK
+        return "",200 # OK
 
     if not request.is_json:
         return {"message":'"Content-Type" MUST be set to "application/json"'}, 400
