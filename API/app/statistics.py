@@ -59,8 +59,6 @@ def Gradient(start,end,listSize):
  
 
 def BasicFormatting(figure,title="Gráfico",x_label=None,y_label=None,grid=True,mapTile=False):
-    figure.plot_height=700
-    figure.plot_width=1500
     figure.title = Title(text=title,align='center')
     figure.title.text_font_size='18pt'
     if x_label:
@@ -154,10 +152,9 @@ def BusAmount(userOptions,databaseOpts):
         raise RequestNotPresentInDatabase
 
     source = ColumnDataSource(data)
-
     dataMin = np.floor(min(data['total']) - max(data['difference'])/1000)*1000
     dataMax = np.floor(max(data['total'])/1000)*1000
-    fig = figure(x_axis_type="datetime",y_range=(4000,6000))
+    fig = figure(x_axis_type="datetime",y_range=(dataMin - 200,dataMax+200))
    
     # # Set x range to be at least a month
     # timeDelay = max(data['x']) - min(data['x'])
