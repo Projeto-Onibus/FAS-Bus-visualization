@@ -37,17 +37,22 @@ def DoRequest(requestType):
     if not request.is_json:
         return {"message":'"Content-Type" MUST be set to "application/json"'}, 400
     
-    print(f"sent data:{request.get_json()}")
+    print(f"sent data (type {type(request.get_json())}): {request.get_json()}")
+
     # Adquirindo configs do script
     try:
-        userOptions = json.loads(request.get_json())
+        userInput = request.get_json()
+        if type(userInput) != type(dict):
+            userOptions = json.loads(request.get_json())
+        else: 
+            userOptions = userInput
     except Exception as err:
         return {"message":"json string is not valid","details":err.__str__()}, 400
 
     if not requestType in ApiFunctions.keys():
         return {"Error":"Request not valid"},400
 
-    print(f"useroptions ({type(userOptions)}): {userOptions}")
+   
     #Selecionar entre diferentes requisicoes
     #try:
     text, graph = ApiFunctions[requestType](userOptions, dict(CONFIGS['database']))
