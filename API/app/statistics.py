@@ -154,7 +154,7 @@ def BusAmount(userOptions,databaseOpts):
     source = ColumnDataSource(data)
     dataMin = np.floor(min(data['total']) - max(data['difference'])/1000)*1000
     dataMax = np.floor(max(data['total'])/1000)*1000
-    fig = figure(x_axis_type="datetime",y_range=(dataMin - 200,dataMax+200))
+    fig = figure(x_axis_type="datetime")
    
     # # Set x range to be at least a month
     # timeDelay = max(data['x']) - min(data['x'])
